@@ -19,6 +19,7 @@ interface ResearchGatherProps {
 export default function ResearchGather({ className, onBlogGenerated }: ResearchGatherProps) {
   const [topic, setTopic] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isGathering, setIsGathering] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [blogInfo, setBlogInfo] = useState<any | null>(null)
@@ -100,6 +101,50 @@ export default function ResearchGather({ className, onBlogGenerated }: ResearchG
     }
   };
 
+  const handleResearch = async () => {
+    if (!topic.trim()) return;
+
+    setIsGathering(true);
+    setError(null);
+
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Could not get user session. Please log in again.');
+      }
+      const jwt = session.access_token;
+
+      const response = await fetch('https://fmoubbrtg1.execute-api.ap-south-1.amazonaws.com/Prod/scraper/topic',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            topic: topic.trim(),
+            max_pages: 5
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'API failed to gather research');
+      }
+
+      const result = await response.json();
+      console.log('Research gathered successfully:', result);
+      alert('Research gathered successfully! Check the console for details.');
+
+    } catch (err: any) {
+      console.error('Research gathering failed:', err);
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsGathering(false);
+    }
+  };
+
   return (
     <div className={className}>
       {error && (
@@ -143,7 +188,7 @@ export default function ResearchGather({ className, onBlogGenerated }: ResearchG
           disabled={isLoading}
           onChange={(e) => setTopic(e.target.value)}
         />
-        <Button onClick={handleGather} disabled={isLoading || !topic.trim()}>
+        <Button onClick={handleGather} disabled={isLoading || isGathering || !topic.trim()}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -152,6 +197,24 @@ export default function ResearchGather({ className, onBlogGenerated }: ResearchG
           ) : (
             'Generate Blog'
           )}
+        </Button>
+        <Button onClick={handleResearch} disabled={isGathering || isLoading || !topic.trim()}>
+          {isGathering ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Gathering...
+            </>
+          ) : (
+            'Gather Research'
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.open(`/public`, '_blank', 'noopener,noreferrer');
+          }}
+        >
+          Visit Site
         </Button>
 
       </div>

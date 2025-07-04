@@ -138,7 +138,10 @@ export default function BlogGeneratorPage() {
   }, [selectedPost]);
 
   const handlePublish = async () => {
-    if (!selectedPost) return;
+    if (!selectedPost) {
+      alert("Please select a post to publish.");
+      return;
+    }
 
     const { error } = await supabase
       .from('blog_posts')
@@ -146,15 +149,15 @@ export default function BlogGeneratorPage() {
       .eq('id', selectedPost.id);
 
     if (error) {
-      console.error('Error publishing post:', error);
+      alert(`Error publishing post: ${error.message}`);
     } else {
+      alert("Post published successfully!");
+      
       const updatedPost = { ...selectedPost, status: 'published' as const };
-      setBlogPosts(prevPosts =>
-        prevPosts.map(p =>
-          p.id === selectedPost.id ? updatedPost : p
-        )
-      );
+
+      setBlogPosts(blogPosts.map(p => p.id === selectedPost.id ? updatedPost : p));
       setSelectedPost(updatedPost);
+      
       console.log('Post published successfully');
     }
   };

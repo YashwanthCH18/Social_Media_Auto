@@ -5,13 +5,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Blog", href: "/dashboard/generate/blog" },
   { name: "LinkedIn", href: "/dashboard/generate/linkedin" },
   { name: "Video", href: "/dashboard/generate/video" },
-  { name: "Settings", href: "/dashboard/settings" },
 ];
 
 export default function DashboardNav() {
@@ -45,13 +53,28 @@ export default function DashboardNav() {
           </Link>
         ))}
       </nav>
-      <Button
-        variant="ghost"
-        onClick={handleLogout}
-        className="transition-colors hover:text-white px-3 py-2 rounded-md text-zinc-400"
-      >
-        Logout
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <User className="h-5 w-5 text-zinc-400 hover:text-white" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">My Account</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout}>
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
