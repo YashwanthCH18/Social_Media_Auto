@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import ResearchGather from '@/components/Research/research-gather'
+import { supabase } from "@/lib/supabase"
+import Link from "next/link"
 
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -33,7 +35,7 @@ import {
 } from "lucide-react"
 
 interface BlogPost {
-  id: number;
+  id: string;
   title: string;
   status: "published" | "draft" | "scheduled";
   views: number;
@@ -44,16 +46,142 @@ export default function BlogGeneratorPage() {
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null)
   const [editorMode, setEditorMode] = useState("edit") // 'edit' or 'preview'
   const [mobilePreview, setMobilePreview] = useState(false)
+  const [generatedBlog, setGeneratedBlog] = useState<{ id: string; title: string; content: string; status: string } | null>(null)
+  const [editorTitle, setEditorTitle] = useState("");
+  const [editorContent, setEditorContent] = useState("");
 
 
 
 
 
-  const blogPosts: BlogPost[] = [
-    { id: 1, title: "Getting Started with AI Content", status: "published", views: 1250, date: "2024-01-15" },
-    { id: 2, title: "The Future of Social Media Marketing", status: "draft", views: 0, date: "2024-01-10" },
-    { id: 3, title: "Building Your Personal Brand", status: "scheduled", views: 0, date: "2024-01-20" },
-  ]
+  // Dynamically loaded posts
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
+  // Fetch initial posts on component mount
+  useEffect(() => {
+    const fetchPosts = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from('blog_posts')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          const formatted = (data as any[]).map((row) => ({
+            id: row.id,
+            title: row.title,
+            status: row.status,
+            views: row.views ?? 0,
+            date: row.created_at ? row.created_at.split('T')[0] : ''
+          }));
+          setBlogPosts(formatted);
+        } else {
+          console.error('Error fetching posts', error);
+        }
+      }
+    };
+    fetchPosts();
+  }, []);
+
+  // Handle newly generated blog
+  useEffect(() => {
+    if (generatedBlog) {
+      console.log("New blog generated, updating UI:", generatedBlog);
+      const newPost: BlogPost = {
+        id: generatedBlog.id,
+        title: generatedBlog.title,
+        status: (generatedBlog as any).status || 'draft',
+        views: 0,
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      // Add new post to the list and select it
+      // This ensures the list is updated without a full refetch
+      setBlogPosts(prevPosts => [newPost, ...prevPosts.filter(p => p.id !== newPost.id)]);
+      setSelectedPost(newPost);
+    }
+  }, [generatedBlog]);
+
+    useEffect(() => {
+    const fetchContent = async () => {
+      if (!selectedPost) {
+        setEditorTitle('');
+        setEditorContent('');
+        return;
+      }
+
+      // If the selected post is the one we just generated, use its content directly
+      if (generatedBlog && selectedPost.id === generatedBlog.id) {
+        setEditorTitle(generatedBlog.title);
+        setEditorContent(generatedBlog.content);
+      } else {
+        // Otherwise, fetch the content from the database
+        setEditorTitle(selectedPost.title);
+        setEditorContent('Loading...');
+        const { data, error } = await supabase
+          .from('blog_posts')
+          .select('html_content')
+          .eq('id', selectedPost.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching post content:', error);
+          setEditorContent('Error loading content.');
+        } else {
+          setEditorContent(data.html_content || '');
+        }
+      }
+    };
+
+    fetchContent();
+  }, [selectedPost]);
+
+  const handlePublish = async () => {
+    if (!selectedPost) return;
+
+    const { error } = await supabase
+      .from('blog_posts')
+      .update({ status: 'published' })
+      .eq('id', selectedPost.id);
+
+    if (error) {
+      console.error('Error publishing post:', error);
+    } else {
+      const updatedPost = { ...selectedPost, status: 'published' as const };
+      setBlogPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id === selectedPost.id ? updatedPost : p
+        )
+      );
+      setSelectedPost(updatedPost);
+      console.log('Post published successfully');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedPost) return;
+
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .update({ title: editorTitle, html_content: editorContent, content: editorContent })
+      .eq('id', selectedPost.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving post:', error);
+    } else {
+      console.log('Post saved successfully');
+      const updatedPost = { ...selectedPost, title: data.title };
+      setBlogPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id === selectedPost.id ? updatedPost : p
+        )
+      );
+      setSelectedPost(updatedPost);
+    }
+  };
 
   const templates = [
     { id: 1, name: "Minimal", preview: "/placeholder.svg?height=200&width=300", category: "Clean" },
@@ -66,7 +194,7 @@ export default function BlogGeneratorPage() {
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Research input */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <ResearchGather />
+        <ResearchGather onBlogGenerated={setGeneratedBlog} />
 
 
       </div>
@@ -82,9 +210,9 @@ export default function BlogGeneratorPage() {
               </Badge>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                Edit Subdomain
+              <Button variant="default" size="sm" onClick={handlePublish} disabled={!selectedPost || selectedPost.status === 'published'}>
+                <Send className="w-4 h-4 mr-2" />
+                {selectedPost?.status === 'published' ? 'Published' : 'Publish'}
               </Button>
               {selectedPost ? (
                 <a
@@ -267,6 +395,41 @@ export default function BlogGeneratorPage() {
                         </div>
                         <Separator orientation="vertical" className="h-6" />
                         <div className="flex items-center space-x-2">
+                          {generatedBlog && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('blog_posts')
+                                    .update({ title: generatedBlog.title, content: generatedBlog.content })
+                                    .eq('id', generatedBlog.id)
+                                  if (!error) {
+                                    alert('Saved')
+                                  }
+                                }}
+                              >
+                                <Save className="w-4 h-4 mr-1" /> Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('blog_posts')
+                                    .update({ status: 'published', title: generatedBlog.title, content: generatedBlog.content })
+                                    .eq('id', generatedBlog.id)
+                                  if (!error) {
+                                    alert('Published')
+                                    setGeneratedBlog({ ...generatedBlog, status: 'published' } as any)
+                                  }
+                                }}
+                              >
+                                <Send className="w-4 h-4 mr-1" /> Publish
+                              </Button>
+                            </>
+                          )}
                           <Button
                             variant={mobilePreview ? "outline" : "default"}
                             size="sm"
@@ -290,10 +453,11 @@ export default function BlogGeneratorPage() {
                     <div className="space-y-2">
                       <Label htmlFor="post-title">Post Title</Label>
                       <Input
-                        id="post-title"
-                        placeholder="Enter your blog post title..."
-                        className="bg-gray-800 border-gray-700 text-white"
-                        defaultValue={selectedPost?.title || ""}
+                        id="blog-title"
+                        placeholder="Enter your blog title here..."
+                        className="text-2xl font-bold bg-transparent border-0 focus:ring-0 p-0 shadow-none"
+                        value={editorTitle}
+                        onChange={(e) => setEditorTitle(e.target.value)}
                       />
                     </div>
 
@@ -336,6 +500,10 @@ export default function BlogGeneratorPage() {
                               <u>U</u>
                             </Button>
                             <Separator orientation="vertical" className="h-6" />
+                            <Button variant="outline" size="sm" onClick={handleSave} disabled={!selectedPost}>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save
+                            </Button>
                             <Button variant="ghost" size="sm">
                               H1
                             </Button>
@@ -357,22 +525,11 @@ export default function BlogGeneratorPage() {
                             </Button>
                           </div>
                           <Textarea
-                            id="post-content"
-                            placeholder="Start writing your blog post..."
-                            className="min-h-[400px] bg-gray-800 border-gray-700 text-white resize-none"
-                            defaultValue="# Welcome to AI Content Creation
-
-This is where you can write your amazing blog post content. The editor supports markdown formatting and real-time preview.
-
-## Key Features
-
-- **Rich text editing** with formatting toolbar
-- **Live preview** to see how your post will look
-- **Template selection** for quick styling
-- **Mobile responsive** preview
-- **SEO optimization** tools
-
-Start writing and watch your content come to life!"
+                            id="blog-content"
+                            placeholder="Start writing your amazing blog post..."
+                            className="min-h-[400px] bg-transparent border-0 focus:ring-0 p-0 resize-none text-lg"
+                            value={editorContent}
+                            onChange={(e) => setEditorContent(e.target.value)}
                           />
                         </div>
                       ) : (
@@ -412,19 +569,87 @@ Start writing and watch your content come to life!"
                     {/* Publishing Controls */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                       <div className="flex items-center space-x-3">
-                        <Button variant="outline" className="border-gray-700 bg-transparent">
+                        <Button variant="outline" className="border-gray-700 bg-transparent" onClick={async () => {
+                            if (!generatedBlog) return;
+                            let { error } = await supabase
+                              .from('blog_posts')
+                              .update({ title: generatedBlog.title, content: generatedBlog.content, status: 'draft' })
+                              .eq('id', generatedBlog.id);
+                            if (error) {
+                              // Retry with html_content fallback (older schema)
+                              const retry = await supabase
+                                .from('blog_posts')
+                                .update({ title: generatedBlog.title, html_content: generatedBlog.content, status: 'draft' })
+                                .eq('id', generatedBlog.id);
+                              error = retry.error;
+                            }
+                            if (!error) {
+                              alert('Draft saved successfully!');
+                            } else {
+                              console.error('Error saving draft', error);
+                              alert('Failed to save draft');
+                            }
+                          }}>
                           <Save className="w-4 h-4 mr-2" />
-                          Save Draft
+                          Save
                         </Button>
                         <Button variant="outline" className="border-gray-700 bg-transparent">
                           <Calendar className="w-4 h-4 mr-2" />
                           Schedule
                         </Button>
                       </div>
-                      <Button className="bg-blue-600 hover:bg-blue-700">
-                        <Send className="w-4 h-4 mr-2" />
-                        Publish Now
-                      </Button>
+                      <Button className="bg-blue-600 hover:bg-blue-700" onClick={async () => {
+                         if (!generatedBlog) return;
+                         let { data, error } = await supabase
+                           .from('blog_posts')
+                           .update({ title: generatedBlog.title, content: generatedBlog.content, status: 'published' })
+                           .eq('id', generatedBlog.id)
+                           .select('*')
+                           .single();
+                         if (error) {
+                           // retry with html_content column
+                           const retry = await supabase
+                             .from('blog_posts')
+                             .update({ title: generatedBlog.title, html_content: generatedBlog.content, status: 'published' })
+                             .eq('id', generatedBlog.id)
+                             .select('*')
+                             .single();
+                           data = retry.data as any;
+                           error = retry.error;
+                         }
+                         if (!error && data) {
+                           // Update local states to enable Visit Site button
+                           setSelectedPost({
+                             id: data.id,
+                             title: data.title,
+                             status: 'published',
+                             views: data.views ?? 0,
+                             date: data.created_at ? data.created_at.split('T')[0] : ''
+                           });
+                           alert('Blog published!');
+                           // Refresh lists
+                           const { data: refreshed } = await supabase
+                             .from('blog_posts')
+                             .select('*')
+                             .order('created_at', { ascending: false });
+                           if (refreshed) {
+                             const formatted = (refreshed as any[]).map((row) => ({
+                               id: row.id,
+                               title: row.title,
+                               status: row.status,
+                               views: row.views ?? 0,
+                               date: row.created_at ? row.created_at.split('T')[0] : ''
+                             }));
+                             setBlogPosts(formatted);
+                           }
+                         } else {
+                           console.error('Publish error', error);
+                           alert('Failed to publish');
+                         }
+                       }}>
+                         <Send className="w-4 h-4 mr-2" />
+                         Publish Now
+                       </Button>
                     </div>
                   </CardContent>
                 </Card>

@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle()
 
     // Silently ignore missing profile rows or RLS errors

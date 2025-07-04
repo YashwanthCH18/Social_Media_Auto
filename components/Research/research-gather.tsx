@@ -8,14 +8,15 @@ import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface ResearchGatherProps {
-  className?: string
+  onBlogGenerated: (blog: { id: string; title: string; content: string; status: string; }) => void;
+  className?: string;
 }
 
 /**
  * Generic input + button to trigger the /scraper/topic endpoint.
  * Drop <ResearchGather/> anywhere a user can type a topic to gather research.
  */
-export default function ResearchGather({ className }: ResearchGatherProps) {
+export default function ResearchGather({ className, onBlogGenerated }: ResearchGatherProps) {
   const [topic, setTopic] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,21 +24,22 @@ export default function ResearchGather({ className }: ResearchGatherProps) {
   const [blogInfo, setBlogInfo] = useState<any | null>(null)
 
   const handleGather = async () => {
-    if (!topic.trim()) return
-    setIsLoading(true)
-    setError(null)
-    setSuccess(false)
-    setBlogInfo(null)
+    if (!topic.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
+    setSuccess(false);
 
     try {
-      // Get Supabase JWT from the custom client
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session?.access_token) {
-        throw new Error('Could not get user session. Please log in again.')
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Could not get user session. Please log in again.');
       }
-      const jwt = session.access_token
+      const jwt = session.access_token;
+      const userId = session.user.id;
 
-      // Make API request
+      // Step 1: Call the API to generate and save the blog.
+      console.log('Calling API to generate and save blog...');
       const response = await fetch('https://leyu1qigsf.execute-api.ap-south-1.amazonaws.com/blog/manual-generate', {
         method: 'POST',
         headers: {
@@ -46,50 +48,57 @@ export default function ResearchGather({ className }: ResearchGatherProps) {
           'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
         },
         body: JSON.stringify({ topic: topic.trim() }),
-      })
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}))
-        throw new Error(errData.message || 'Failed to generate blog')
-      }
-      const data = await response.json()
-      // Try to fetch the most recent blog for this user and topic
-      let recentBlogId = null;
-      if (data.uid) {
-        const { data: blogs, error: blogsError } = await supabase
-          .from('blog_posts')
-          .select('id, title, created_at')
-          .eq('user_id', data.uid)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        console.log('Supabase blogs query result:', { blogs, blogsError });
-        if (!blogsError && blogs && blogs.length > 0) {
-          recentBlogId = blogs[0].id;
-        } else {
-          // Fallback: grab the absolute latest blog regardless of user (useful if user_id not set)
-          const { data: latest, error: latestError } = await supabase
-            .from('blog_posts')
-            .select('id')
-            .order('created_at', { ascending: false })
-            .limit(1);
-          if (!latestError && latest && latest.length > 0) {
-            recentBlogId = latest[0].id;
-          }
-        }
-        console.log('recentBlogId:', recentBlogId);
-      }
-      setBlogInfo(prev => {
-        const info = { ...data, recentBlogId };
-        console.log('Setting blogInfo:', info);
-        return info;
       });
-      setSuccess(true)
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'API failed to generate blog');
+      }
+
+      const apiResponse = await response.json();
+      console.log('API confirms blog saved:', apiResponse);
+
+      const partialBlog = Array.isArray(apiResponse.blog) ? apiResponse.blog[0] : apiResponse.blog;
+      if (!partialBlog || !partialBlog.title) {
+        throw new Error('API response did not contain a blog with a title.');
+      }
+
+      // Step 2: Fetch the full blog post from the database to get the ID.
+      console.log(`Fetching full blog post with title: "${partialBlog.title}"`);
+      const { data: newPost, error: fetchError } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('title', partialBlog.title)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError || !newPost) {
+        console.error('Failed to fetch the new blog post from database:', fetchError);
+        throw new Error('Could not retrieve the newly created blog post. Please check your posts list.');
+      }
+
+      // Step 3: Update the UI with the complete blog post data.
+      console.log('Successfully fetched complete blog post:', newPost);
+      if (onBlogGenerated) {
+        onBlogGenerated({
+          id: newPost.id,
+          title: newPost.title,
+          content: newPost.html_content ?? newPost.content ?? '',
+          status: newPost.status || 'draft'
+        });
+      }
+
+      setSuccess(true);
+
     } catch (err: any) {
-      console.error('Gather research failed', err)
-      setError(err.message || 'Failed to start research. Please try again.')
+      console.error('Blog generation process failed:', err);
+      setError(err.message || 'An unexpected error occurred.');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className={className}>
@@ -138,23 +147,13 @@ export default function ResearchGather({ className }: ResearchGatherProps) {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Gathering…
+              Generating…
             </>
           ) : (
-            'Gather Research'
+            'Generate Blog'
           )}
         </Button>
-        <Button
-          variant="outline"
-          disabled={!blogInfo?.recentBlogId}
-          onClick={() => {
-            if (blogInfo?.recentBlogId) {
-              window.open(`/public/${blogInfo.recentBlogId}`, '_blank', 'noopener,noreferrer');
-            }
-          }}
-        >
-          Visit Site
-        </Button>
+
       </div>
     </div>
   )
