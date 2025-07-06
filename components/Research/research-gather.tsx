@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { startTopicScrape } from '@/lib/scraper'
 
 interface ResearchGatherProps {
   onBlogGenerated?: (blog: { id: string; title: string; content: string; status: string; }) => void;
@@ -122,35 +123,9 @@ export default function ResearchGather({
     setError(null);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Could not get user session. Please log in again.');
-      }
-      const jwt = session.access_token;
-
-      const response = await fetch('https://fmoubbrtg1.execute-api.ap-south-1.amazonaws.com/Prod/scraper/topic',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${jwt}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            topic: topic.trim(),
-            max_pages: 5
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || 'API failed to gather research');
-      }
-
-      const result = await response.json();
+      const result = await startTopicScrape(topic.trim());
       console.log('Research gathered successfully:', result);
       alert('Research gathered successfully! Check the console for details.');
-
     } catch (err: any) {
       console.error('Research gathering failed:', err);
       setError(err.message || 'An unexpected error occurred.');
