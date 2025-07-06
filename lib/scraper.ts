@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export const SCRAPER_API = 'https://gp2ea5vro1.execute-api.ap-south-1.amazonaws.com'
+export const SCRAPER_API = 'https://3zowfw40q8.execute-api.ap-south-1.amazonaws.com'
 
 /**
  * Send an authorised POST request to the Scraper Service.
