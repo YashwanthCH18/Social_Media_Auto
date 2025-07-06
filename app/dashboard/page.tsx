@@ -23,7 +23,7 @@ export default function DashboardPage() {
       title: "Blog Generator",
       description: "Generate full-length blog content tailored to your Content DNA.",
       href: "/dashboard/generate/blog",
-            imageUrl: "/download.png",
+            imageUrl: "/blog.jpg",
       hoverTheme: 'blog' as const,
     },
     {
@@ -31,7 +31,7 @@ export default function DashboardPage() {
       title: "LinkedIn Post Generator",
       description: "Create short, scroll-stopping posts for LinkedIn.",
       href: "/dashboard/generate/linkedin",
-      imageUrl: "https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+      imageUrl: "/linkedin.jpg",
       hoverTheme: 'linkedin' as const,
     },
     {
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       title: "Video Generator",
       description: "Create scripts for Instagram Reels and YouTube Shorts.",
       href: "/dashboard/generate/video",
-      imageUrl: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+      imageUrl: "/video.jpg",
       hoverTheme: 'video' as const,
     },
   ];
