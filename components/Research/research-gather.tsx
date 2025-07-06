@@ -8,18 +8,32 @@ import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface ResearchGatherProps {
-  onBlogGenerated: (blog: { id: string; title: string; content: string; status: string; }) => void;
+  onBlogGenerated?: (blog: { id: string; title: string; content: string; status: string; }) => void;
+  onLinkedInPostGenerated?: (post: { content: string }) => void;
   className?: string;
+  showGenerateBlogButton?: boolean;
+  showGatherResearchButton?: boolean;
+  showGenerateLinkedInPostButton?: boolean;
+  showVisitSiteButton?: boolean;
 }
 
 /**
  * Generic input + button to trigger the /scraper/topic endpoint.
  * Drop <ResearchGather/> anywhere a user can type a topic to gather research.
  */
-export default function ResearchGather({ className, onBlogGenerated }: ResearchGatherProps) {
+export default function ResearchGather({
+  className,
+  onBlogGenerated,
+  onLinkedInPostGenerated,
+  showGenerateBlogButton = true,
+  showGatherResearchButton = true,
+  showGenerateLinkedInPostButton = false,
+  showVisitSiteButton = true,
+}: ResearchGatherProps) {
   const [topic, setTopic] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGathering, setIsGathering] = useState(false)
+  const [isGeneratingPost, setIsGeneratingPost] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [blogInfo, setBlogInfo] = useState<any | null>(null)
@@ -145,6 +159,53 @@ export default function ResearchGather({ className, onBlogGenerated }: ResearchG
     }
   };
 
+  const handleGenerateLinkedInPost = async () => {
+    if (!topic.trim()) return;
+
+    setIsGeneratingPost(true);
+    setError(null);
+
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Could not get user session. Please log in again.');
+      }
+      const jwt = session.access_token;
+
+      const response = await fetch('https://3vpkgdhdy4.execute-api.ap-south-1.amazonaws.com/generate/manual',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            topic: topic.trim(),
+            length: "short", // Hardcoded for now, can be made dynamic later
+            additional_instructions: "Focus on the cost-saving benefits." // Hardcoded for now
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'API failed to generate LinkedIn post');
+      }
+
+      const result = await response.json();
+
+      if (onLinkedInPostGenerated && result.content) {
+        onLinkedInPostGenerated({ content: result.content });
+      }
+
+    } catch (err: any) {
+      console.error('LinkedIn post generation failed:', err);
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsGeneratingPost(false);
+    }
+  };
+
   return (
     <div className={className}>
       {error && (
@@ -188,34 +249,52 @@ export default function ResearchGather({ className, onBlogGenerated }: ResearchG
           disabled={isLoading}
           onChange={(e) => setTopic(e.target.value)}
         />
-        <Button onClick={handleGather} disabled={isLoading || isGathering || !topic.trim()}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating…
-            </>
-          ) : (
-            'Generate Blog'
-          )}
-        </Button>
-        <Button onClick={handleResearch} disabled={isGathering || isLoading || !topic.trim()}>
-          {isGathering ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Gathering...
-            </>
-          ) : (
-            'Gather Research'
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            window.open(`/public`, '_blank', 'noopener,noreferrer');
-          }}
-        >
-          Visit Site
-        </Button>
+        {showGenerateBlogButton && (
+          <Button onClick={handleGather} disabled={isLoading || isGathering || !topic.trim()}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              'Generate Blog'
+            )}
+          </Button>
+        )}
+        {showGatherResearchButton && (
+          <Button onClick={handleResearch} disabled={isGathering || isLoading || !topic.trim()}>
+            {isGathering ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Gathering...
+              </>
+            ) : (
+              'Gather Research'
+            )}
+          </Button>
+        )}
+        {showGenerateLinkedInPostButton && (
+          <Button onClick={handleGenerateLinkedInPost} disabled={isGeneratingPost || isLoading || isGathering || !topic.trim()}>
+            {isGeneratingPost ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating Post...
+              </>
+            ) : (
+              'Generate LinkedIn Post'
+            )}
+          </Button>
+        )}
+        {showVisitSiteButton && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              window.open(`/public`, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Visit Site
+          </Button>
+        )}
 
       </div>
     </div>

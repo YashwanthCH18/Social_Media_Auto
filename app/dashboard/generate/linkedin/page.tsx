@@ -42,7 +42,7 @@ export default function LinkedInGeneratorPage() {
   const [autoHashtags, setAutoHashtags] = useState(true)
   const [selectedHashtags, setSelectedHashtags] = useState(["#AI", "#ContentMarketing", "#LinkedIn"])
 
-  const maxCharacters = 3000
+  const maxCharacters = 2000
   const optimalLength = { min: 150, max: 300 }
 
   const tones = [
@@ -100,30 +100,16 @@ export default function LinkedInGeneratorPage() {
     setCharacterCount(value.length)
   }
 
-  const generateAIContent = () => {
-    const sampleContent = `🚀 The future of content creation is here!
 
-After working with hundreds of businesses, I've noticed a pattern: the most successful companies aren't just creating more content—they're creating smarter content.
 
-Here's what I've learned:
-
-✅ Quality beats quantity every time
-✅ Authentic voice resonates more than perfect copy
-✅ Consistency builds trust faster than viral posts
-
-The key? Finding the right balance between automation and human creativity.
-
-What's your biggest content creation challenge? Let me know in the comments! 👇
-
-#ContentMarketing #AI #DigitalStrategy #LinkedIn`
-
-    setPostContent(sampleContent)
-    setCharacterCount(sampleContent.length)
-  }
+  const handleLinkedInPostGenerated = (post: { content: string }) => {
+    setPostContent(post.content);
+    setCharacterCount(post.content.length);
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-7xl mx-auto px-6 py-6"><ResearchGather /></div>
+      <div className="max-w-7xl mx-auto px-6 py-6"><ResearchGather showGenerateBlogButton={false} showGenerateLinkedInPostButton={true} onLinkedInPostGenerated={handleLinkedInPostGenerated} showVisitSiteButton={false} /></div>
       {/* Header */}
       <div className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -266,10 +252,7 @@ What's your biggest content creation challenge? Let me know in the comments! �
                   </Select>
                 </div>
 
-                <Button onClick={generateAIContent} className="w-full bg-blue-600 hover:bg-blue-700">
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Generate Content
-                </Button>
+
               </CardContent>
             </Card>
 

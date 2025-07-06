@@ -23,7 +23,7 @@ export default function DashboardPage() {
       title: "Blog Generator",
       description: "Generate full-length blog content tailored to your Content DNA.",
       href: "/dashboard/generate/blog",
-      imageUrl: "https://images.pexels.com/photos/3184418/pexels-photo-3184.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+            imageUrl: "/download.png",
       hoverTheme: 'blog' as const,
     },
     {
