@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle } from 'lucide-react'
+import Image from 'next/image'
 
 const questions = [
   {
@@ -162,7 +163,8 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary/5 to-background p-4">
-      <Card className="w-full max-w-2xl">
+      <div className="flex items-center justify-center gap-8">
+        <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Welcome! Let's get to know you</CardTitle>
           <CardDescription className="text-center">
@@ -239,7 +241,17 @@ export default function OnboardingPage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+        <div className="hidden lg:block">
+          <Image 
+            src="/cute-3d-robot-say-hello-png (1).png"
+            alt="Onboarding Robot"
+            width={400}
+            height={400}
+            className="object-contain animate-bounce"
+          />
+        </div>
+      </div>
     </div>
   )
 }
