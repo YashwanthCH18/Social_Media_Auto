@@ -1,12 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Copy } from "lucide-react"
+import { Copy, Send, Loader2 } from "lucide-react"
 import ResearchGather from '@/components/Research/research-gather'
 import dynamic from 'next/dynamic'
-import { useMemo } from 'react'
 import LinkedinPreview from '@/components/linkedin/LinkedinPreview';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
@@ -15,6 +14,8 @@ export default function LinkedInGeneratorPage() {
   const [postContent, setPostContent] = useState("")
   const [characterCount, setCharacterCount] = useState(0)
   const [copyText, setCopyText] = useState("Copy")
+  const [isPosting, setIsPosting] = useState(false)
+  const [postStatus, setPostStatus] = useState<{type: 'success' | 'error', message: string} | null>(null)
 
   const maxCharacters = 2000
   const optimalLength = { min: 150, max: 300 }
@@ -29,6 +30,48 @@ export default function LinkedInGeneratorPage() {
     }).catch(err => {
       console.error('Failed to copy text: ', err);
     });
+  };
+
+  const handlePostToLinkedIn = async () => {
+    if (!postContent) return;
+    
+    setIsPosting(true);
+    setPostStatus(null);
+    
+    try {
+      const response = await fetch('https://spmsuccess.app.n8n.cloud/webhook/auto-linkedin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          linkedpost: postContent.replace(/<[^>]+>/g, '') // Remove HTML tags
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to post to LinkedIn');
+      }
+      
+      setPostStatus({
+        type: 'success',
+        message: 'Successfully posted to LinkedIn!'
+      });
+      
+    } catch (error) {
+      console.error('Error posting to LinkedIn:', error);
+      setPostStatus({
+        type: 'error',
+        message: 'Failed to post to LinkedIn. Please try again.'
+      });
+    } finally {
+      setIsPosting(false);
+      
+      // Clear status after 5 seconds
+      setTimeout(() => {
+        setPostStatus(null);
+      }, 5000);
+    }
   };
 
       const handleContentChange = (value: string) => {
@@ -65,14 +108,46 @@ export default function LinkedInGeneratorPage() {
             </CardHeader>
             <CardContent>
               <TiptapEditor value={postContent} onChange={handleContentChange} />
-              <div className="flex justify-between items-center mt-2">
-                <Button variant="outline" size="sm" onClick={handleCopy} className="text-gray-400 border-gray-700 hover:bg-gray-800 hover:text-white">
-                  <Copy className="h-4 w-4 mr-2" />
-                  {copyText}
-                </Button>
-                <div className="text-xs text-gray-500">
-                  {characterCount} / {maxCharacters} | Optimal: {optimalLength.min}-{optimalLength.max}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={handleCopy} className="text-gray-400 border-gray-700 hover:bg-gray-800 hover:text-white">
+                      <Copy className="h-4 w-4 mr-2" />
+                      {copyText}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handlePostToLinkedIn} 
+                      disabled={isPosting || !postContent}
+                      className="text-blue-400 border-gray-700 hover:bg-gray-800 hover:text-blue-300"
+                    >
+                      {isPosting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Posting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Post to LinkedIn
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {characterCount} / {maxCharacters} | Optimal: {optimalLength.min}-{optimalLength.max}
+                  </div>
                 </div>
+                {postStatus && (
+                  <div className={`text-sm p-2 rounded-md ${
+                    postStatus.type === 'success' 
+                      ? 'bg-green-900/30 text-green-400' 
+                      : 'bg-red-900/30 text-red-400'
+                  }`}>
+                    {postStatus.message}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
