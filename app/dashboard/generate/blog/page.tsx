@@ -240,60 +240,8 @@ export default function BlogGeneratorPage() {
         </div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gray-900/50 border-gray-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">12</div>
-              <p className="text-xs text-green-400 flex items-center mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +2 this month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">8,547</div>
-              <p className="text-xs text-green-400 flex items-center mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +15% this week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Avg. Engagement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">4.2%</div>
-              <p className="text-xs text-blue-400 flex items-center mt-1">
-                <Users className="w-3 h-3 mr-1" />
-                Above average
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900/50 border-gray-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Top Post</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm font-medium text-white">AI Content Guide</div>
-              <p className="text-xs text-gray-400 mt-1">2,341 views</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Post Selection Sidebar */}
           <div className="lg:col-span-1">
@@ -372,10 +320,6 @@ export default function BlogGeneratorPage() {
                 <TabsTrigger value="appearance" className="data-[state=active]:bg-gray-800">
                   <Palette className="w-4 h-4 mr-2" />
                   Appearance
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="data-[state=active]:bg-gray-800">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Analytics
                 </TabsTrigger>
               </TabsList>
 
@@ -462,28 +406,6 @@ export default function BlogGeneratorPage() {
                         value={editorTitle}
                         onChange={(e) => setEditorTitle(e.target.value)}
                       />
-                    </div>
-
-                    {/* Template Selection */}
-                    <div className="space-y-2">
-                      <Label>Choose Template</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {templates.map((template) => (
-                          <div key={template.id} className="relative cursor-pointer group">
-                            <div className="aspect-video bg-gray-800 rounded-lg border border-gray-700 hover:border-blue-500 transition-colors overflow-hidden">
-                              <img
-                                src={template.preview || "/placeholder.svg"}
-                                alt={template.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="mt-2 text-center">
-                              <p className="text-sm font-medium text-white">{template.name}</p>
-                              <p className="text-xs text-gray-400">{template.category}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
                     </div>
 
                     {/* Content Editor */}
