@@ -153,6 +153,7 @@ export default function ResearchGather({
           headers: {
             'Authorization': `Bearer ${jwt}`,
             'Content-Type': 'application/json',
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
           },
           body: JSON.stringify({
             topic: topic.trim(),

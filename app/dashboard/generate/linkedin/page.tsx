@@ -7,6 +7,7 @@ import { Copy } from "lucide-react"
 import ResearchGather from '@/components/Research/research-gather'
 import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
+import LinkedinPreview from '@/components/linkedin/LinkedinPreview';
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
 
@@ -54,26 +55,32 @@ export default function LinkedInGeneratorPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Post Editor</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <TiptapEditor value={postContent} onChange={handleContentChange} />
-            <div className="flex justify-between items-center mt-2">
-              <Button variant="outline" size="sm" onClick={handleCopy} className="text-gray-400 border-gray-700 hover:bg-gray-800 hover:text-white">
-                <Copy className="h-4 w-4 mr-2" />
-                {copyText}
-              </Button>
-                            <div className="text-xs text-gray-500">
-                {characterCount} / {maxCharacters} | Optimal: {optimalLength.min}-{optimalLength.max}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div>
+          <Card className="bg-gray-900/50 border-gray-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Post Editor</CardTitle>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <TiptapEditor value={postContent} onChange={handleContentChange} />
+              <div className="flex justify-between items-center mt-2">
+                <Button variant="outline" size="sm" onClick={handleCopy} className="text-gray-400 border-gray-700 hover:bg-gray-800 hover:text-white">
+                  <Copy className="h-4 w-4 mr-2" />
+                  {copyText}
+                </Button>
+                <div className="text-xs text-gray-500">
+                  {characterCount} / {maxCharacters} | Optimal: {optimalLength.min}-{optimalLength.max}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold mb-4">LinkedIn Preview</h2>
+          <LinkedinPreview content={postContent} />
+        </div>
       </div>
     </div>
   )
