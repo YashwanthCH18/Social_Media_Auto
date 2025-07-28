@@ -29,7 +29,7 @@ export default function ResearchGather({
   showGenerateBlogButton = true,
   showGatherResearchButton = true,
   showGenerateLinkedInPostButton = false,
-  showVisitSiteButton = true,
+  showVisitSiteButton = false,
 }: ResearchGatherProps) {
   const [topic, setTopic] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -265,7 +265,7 @@ export default function ResearchGather({
           <Button
             variant="outline"
             onClick={() => {
-              window.open(`/public`, '_blank', 'noopener,noreferrer');
+              window.location.href = `/public`;
             }}
           >
             Visit Site

@@ -197,7 +197,7 @@ export default function BlogGeneratorPage() {
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Research input */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <ResearchGather onBlogGenerated={setGeneratedBlog} />
+        <ResearchGather onBlogGenerated={setGeneratedBlog} showVisitSiteButton={false} />
 
 
       </div>
