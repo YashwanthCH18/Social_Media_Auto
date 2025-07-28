@@ -1,24 +1,51 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Copy, Send, Loader2 } from "lucide-react"
 import ResearchGather from '@/components/Research/research-gather'
 import dynamic from 'next/dynamic'
 import LinkedinPreview from '@/components/linkedin/LinkedinPreview';
+import { useAuth } from '@/lib/auth-context'
+import { supabase } from '@/lib/supabase'
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
 
 export default function LinkedInGeneratorPage() {
+  const { user, isLoading: authLoading } = useAuth()
   const [postContent, setPostContent] = useState("")
   const [characterCount, setCharacterCount] = useState(0)
   const [copyText, setCopyText] = useState("Copy")
   const [isPosting, setIsPosting] = useState(false)
   const [postStatus, setPostStatus] = useState<{type: 'success' | 'error', message: string} | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   const maxCharacters = 2000
   const optimalLength = { min: 150, max: 300 }
+
+  // Check and refresh session on component mount and when user changes
+  useEffect(() => {
+    const checkSession = async () => {
+      if (user && !authLoading) {
+        try {
+          // Force refresh session to ensure it's valid
+          const { error } = await supabase.auth.refreshSession()
+          if (error) {
+            console.warn('Session refresh warning:', error.message)
+            setSessionError('Session may be expired. Some features might not work properly.')
+          } else {
+            setSessionError(null)
+          }
+        } catch (error) {
+          console.error('Session check error:', error)
+          setSessionError('Authentication error. Please try refreshing the page.')
+        }
+      }
+    }
+
+    checkSession()
+  }, [user, authLoading])
 
   const handleCopy = () => {
     const plainText = postContent.replace(/<[^>]+>/g, '');
@@ -88,6 +115,13 @@ export default function LinkedInGeneratorPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      {sessionError && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="bg-yellow-900/30 text-yellow-400 p-3 rounded-md text-sm">
+            {sessionError}
+          </div>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <ResearchGather
           showGenerateBlogButton={false}
@@ -108,6 +142,16 @@ export default function LinkedInGeneratorPage() {
             </CardHeader>
             <CardContent>
               <TiptapEditor value={postContent} onChange={handleContentChange} />
+              {authLoading && (
+                <div className="mt-2 text-sm text-gray-400">
+                  Loading authentication...
+                </div>
+              )}
+              {!user && !authLoading && (
+                <div className="mt-2 text-sm text-red-400">
+                  Please sign in to use the generation features.
+                </div>
+              )}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex space-x-2">
@@ -119,7 +163,7 @@ export default function LinkedInGeneratorPage() {
                       variant="outline" 
                       size="sm" 
                       onClick={handlePostToLinkedIn} 
-                      disabled={isPosting || !postContent}
+                      disabled={isPosting || !postContent || authLoading || !user}
                       className="text-blue-400 border-gray-700 hover:bg-gray-800 hover:text-blue-300"
                     >
                       {isPosting ? (

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { startTopicScrape } from '@/lib/scraper'
+import { useAuth } from '@/lib/auth-context'
 
 interface ResearchGatherProps {
   onBlogGenerated?: (blog: { id: string; title: string; content: string; status: string; }) => void;
@@ -32,6 +33,7 @@ export default function ResearchGather({
   showVisitSiteButton = true,
 }: ResearchGatherProps) {
   const [topic, setTopic] = useState('')
+  const { user, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [isGathering, setIsGathering] = useState(false)
   const [isGeneratingPost, setIsGeneratingPost] = useState(false)
@@ -39,20 +41,58 @@ export default function ResearchGather({
   const [success, setSuccess] = useState(false)
   const [blogInfo, setBlogInfo] = useState<any | null>(null)
 
+  // Reset error state when user changes or component mounts
+  useEffect(() => {
+    if (user) {
+      setError(null)
+    }
+  }, [user])
+
+  // Check authentication before any action
+  const checkAuth = () => {
+    if (!user && !authLoading) {
+      setError('Please sign in to use this feature.')
+      return false
+    }
+    return true
+  }
+
   const handleGather = async () => {
     if (!topic.trim()) return;
+    if (!checkAuth()) return;
 
     setIsLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
+      // Force refresh the session to ensure we have the latest auth state
+      await supabase.auth.refreshSession();
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
       if (sessionError || !session) {
-        throw new Error('Could not get user session. Please log in again.');
+        // Try to get user from auth context as fallback
+        if (!user) {
+          throw new Error('Could not get user session. Please log in again.');
+        }
+        // If we have user from context but no session, try to refresh
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw new Error('Session expired. Please log in again.');
+        }
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (!newSession) {
+          throw new Error('Could not refresh session. Please log in again.');
+        }
       }
-      const jwt = session.access_token;
-      const userId = session.user.id;
+      
+      const currentSession = await supabase.auth.getSession();
+      const jwt = currentSession.data.session?.access_token;
+      const userId = currentSession.data.session?.user.id || user?.id;
+      
+      if (!jwt || !userId) {
+        throw new Error('Authentication required. Please log in again.');
+      }
 
       // Step 1: Call the API to generate and save the blog.
       console.log('Calling API to generate and save blog...');
@@ -118,6 +158,7 @@ export default function ResearchGather({
 
   const handleResearch = async () => {
     if (!topic.trim()) return;
+    if (!checkAuth()) return;
 
     setIsGathering(true);
     setError(null);
@@ -136,16 +177,38 @@ export default function ResearchGather({
 
   const handleGenerateLinkedInPost = async () => {
     if (!topic.trim()) return;
+    if (!checkAuth()) return;
 
     setIsGeneratingPost(true);
     setError(null);
 
     try {
+      // Force refresh the session to ensure we have the latest auth state
+      await supabase.auth.refreshSession();
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
       if (sessionError || !session) {
-        throw new Error('Could not get user session. Please log in again.');
+        // Try to get user from auth context as fallback
+        if (!user) {
+          throw new Error('Could not get user session. Please log in again.');
+        }
+        // If we have user from context but no session, try to refresh
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw new Error('Session expired. Please log in again.');
+        }
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (!newSession) {
+          throw new Error('Could not refresh session. Please log in again.');
+        }
       }
-      const jwt = session.access_token;
+      
+      const currentSession = await supabase.auth.getSession();
+      const jwt = currentSession.data.session?.access_token;
+      
+      if (!jwt) {
+        throw new Error('Authentication required. Please log in again.');
+      }
 
       const response = await fetch('https://3vpkgdhdy4.execute-api.ap-south-1.amazonaws.com/generate/manual',
         {
@@ -184,6 +247,11 @@ export default function ResearchGather({
 
   return (
     <div className={className}>
+      {authLoading && (
+        <Alert className="mb-2">
+          <AlertDescription>Loading authentication...</AlertDescription>
+        </Alert>
+      )}
       {error && (
         <Alert variant="destructive" className="mb-2">
           <AlertDescription>{error}</AlertDescription>
@@ -222,11 +290,11 @@ export default function ResearchGather({
         <Input
           placeholder="Enter a topic e.g. SaaS pricing strategies in 2025"
           value={topic}
-          disabled={isLoading}
+          disabled={isLoading || authLoading}
           onChange={(e) => setTopic(e.target.value)}
         />
         {showGenerateBlogButton && (
-          <Button onClick={handleGather} disabled={isLoading || isGathering || !topic.trim()}>
+          <Button onClick={handleGather} disabled={isLoading || isGathering || !topic.trim() || authLoading || !user}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -238,7 +306,7 @@ export default function ResearchGather({
           </Button>
         )}
         {showGatherResearchButton && (
-          <Button onClick={handleResearch} disabled={isGathering || isLoading || !topic.trim()}>
+          <Button onClick={handleResearch} disabled={isGathering || isLoading || !topic.trim() || authLoading || !user}>
             {isGathering ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -250,7 +318,7 @@ export default function ResearchGather({
           </Button>
         )}
         {showGenerateLinkedInPostButton && (
-          <Button onClick={handleGenerateLinkedInPost} disabled={isGeneratingPost || isLoading || isGathering || !topic.trim()}>
+          <Button onClick={handleGenerateLinkedInPost} disabled={isGeneratingPost || isLoading || isGathering || !topic.trim() || authLoading || !user}>
             {isGeneratingPost ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

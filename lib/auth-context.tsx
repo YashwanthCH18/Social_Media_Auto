@@ -20,6 +20,7 @@ type AuthContextType = {
   isLoading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  refreshSession: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -80,10 +81,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
+      try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         setUser(session.user)
         await getProfile(session.user.id)
+      }
+      } catch (error) {
+        console.error('Error getting initial session:', error)
       }
       setIsLoading(false)
     }
@@ -93,6 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id)
+        
         if (session?.user) {
           setUser(session.user)
           await getProfile(session.user.id)
@@ -107,12 +114,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Add a method to force refresh the session
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        console.error('Error refreshing session:', error)
+        return false
+      }
+      if (data.session?.user) {
+        setUser(data.session.user)
+        await getProfile(data.session.user.id)
+      }
+      return true
+    } catch (error) {
+      console.error('Error in refreshSession:', error)
+      return false
+    }
+  }
+
   const value = {
     user,
     userProfile,
     isLoading,
     signOut,
     refreshProfile,
+    refreshSession,
   }
 
   return (

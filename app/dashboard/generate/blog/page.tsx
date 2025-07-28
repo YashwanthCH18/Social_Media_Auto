@@ -143,6 +143,16 @@ export default function BlogGeneratorPage() {
       return;
     }
 
+    try {
+      // Ensure we have a valid session before making the request
+      await supabase.auth.refreshSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert("Session expired. Please refresh the page and try again.");
+        return;
+      }
+
     const { error } = await supabase
       .from('blog_posts')
       .update({ status: 'published' })
@@ -160,10 +170,24 @@ export default function BlogGeneratorPage() {
       
       console.log('Post published successfully');
     }
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert("An error occurred while publishing. Please try again.");
+    }
   };
 
   const handleSave = async () => {
     if (!selectedPost) return;
+
+    try {
+      // Ensure we have a valid session before making the request
+      await supabase.auth.refreshSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert("Session expired. Please refresh the page and try again.");
+        return;
+      }
 
     const { data, error } = await supabase
       .from('blog_posts')
@@ -174,6 +198,7 @@ export default function BlogGeneratorPage() {
 
     if (error) {
       console.error('Error saving post:', error);
+      alert("Error saving post. Please try again.");
     } else {
       console.log('Post saved successfully');
       const updatedPost = { ...selectedPost, title: data.title };
@@ -183,6 +208,10 @@ export default function BlogGeneratorPage() {
         )
       );
       setSelectedPost(updatedPost);
+    }
+    } catch (error) {
+      console.error('Save error:', error);
+      alert("An error occurred while saving. Please try again.");
     }
   };
 
